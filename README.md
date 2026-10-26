@@ -10,7 +10,7 @@ on their own module straight away. All tests pass: `python -m pytest`.
 ## 1. Setup (each member, once)
 
 ```bash
-git clone <your-repo-url> && cd mris
+git clone https://github.com/senthilkumar-creator/MRIS_Demo.git && cd mris
 python -m venv .venv
 # Windows:  .venv\Scripts\activate        Mac/Linux:  source .venv/bin/activate
 pip install -r requirements.txt
