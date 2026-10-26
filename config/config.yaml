@@ -1,0 +1,19 @@
+# All tunable settings live here so they can be changed without editing code.
+fetch:
+  timeout_seconds: 8
+  retries: 2
+  max_concurrent_sites: 30       # tune in Phase 4 (try 10 / 30 / 50)
+  max_pages_per_site: 6          # home + up to 5 linked pages
+  user_agent: "MRIS-research-bot/0.1 (student project)"
+batch:
+  chunk_size: 200                # sites held in memory at once
+llm:
+  mode: "ollama"                 # "ollama" or "mock" (mock needs no model; use for tests)
+  base_url: "http://localhost:11434"
+  model: "llama3.1:8b"           # candidates: llama3.1:8b, mistral:7b, qwen2.5:7b
+  temperature: 0
+  timeout_seconds: 30
+  max_chars_per_site: 6000       # text budget sent to the LLM
+decision:
+  confidence_threshold: 0.7      # LLM field below this = uncertain -> HUMAN_REVIEW
+  domain_age_days_threshold: 180

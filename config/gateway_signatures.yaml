@@ -1,0 +1,19 @@
+# Payment gateway signatures searched for in page HTML (lowercase substrings).
+# Owner: Member 3. Extend this list as you test real sites.
+gateways:
+  helcim:      ["helcim.com", "helcim-pay", "helcim.app"]
+  stripe:      ["js.stripe.com", "stripe.com/v3", "data-stripe", "stripe-checkout"]
+  shopify:     ["cdn.shopify.com", "shopify-payments", "myshopify.com", "shop_pay"]
+  adyen:       ["adyen.com", "checkoutshopper", "adyen-checkout"]
+  woocommerce: ["woocommerce", "wc-ajax", "wp-content/plugins/woocommerce"]
+  paypal:      ["paypal.com/sdk", "paypalobjects.com", "paypal-button"]
+checkout_signals:
+  cart_words:     ["add to cart", "add to bag", "shopping cart", "view cart", "your cart"]
+  checkout_words: ["checkout", "proceed to payment", "place order", "pay now", "buy now"]
+restricted_keywords:   # first-pass keywords only; the LLM does the real judgement
+  - firearm
+  - ammunition
+  - vape
+  - cbd
+  - counterfeit
+  - prescription
