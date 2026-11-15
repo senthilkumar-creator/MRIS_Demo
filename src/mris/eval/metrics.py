@@ -6,7 +6,7 @@ Priority metric: false-negative rate = risky sites that MRIS would send to NO_HU
 from typing import Dict, List
 import pandas as pd
 
-FLAGS = ["delayed_delivery", "restricted_goods", "no_terms_of_service", "ambiguous_refund", "missing_contact"]
+FLAGS = ["delayed_delivery", "restricted_goods", "missing_terms_of_service", "ambiguous_refund_policy", "missing_contact_info"]
 
 
 def _truthy(v) -> bool:
@@ -21,8 +21,10 @@ def prf(tp: int, fp: int, fn: int) -> Dict[str, float]:
 
 
 def evaluate(labels: pd.DataFrame, preds: pd.DataFrame) -> Dict:
-    """labels columns: url, decision, + one column per flag. preds: output of results_to_dataframe()."""
-    df = labels.merge(preds, on="url", suffixes=("_true", "_pred"))
+    """labels columns: url, decision (HUMAN_REVIEW / NO_HUMAN_REVIEW), + one column per flag.
+    preds: output of results_to_dataframe()."""
+    df = labels.rename(columns={"decision": "decision_true"}).merge(
+        preds.rename(columns={"routing_decision": "decision_pred"}), on="url")
     out: Dict = {"n_sites": len(df)}
     if df.empty:
         return out

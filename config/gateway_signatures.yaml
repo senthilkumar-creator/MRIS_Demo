@@ -1,5 +1,6 @@
 # Payment gateway signatures searched for in page HTML (lowercase substrings).
-# Owner: Member 3. Extend this list as you test real sites.
+# Owner: 
+# Extend this list as we test additional sites.
 gateways:
   helcim:      ["helcim.com", "helcim-pay", "helcim.app"]
   stripe:      ["js.stripe.com", "stripe.com/v3", "data-stripe", "stripe-checkout"]

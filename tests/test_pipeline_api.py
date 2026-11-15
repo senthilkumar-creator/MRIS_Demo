@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from mris.api import app
 
 GOOD = b"""<html><body><h1>Good Shop</h1><a href="/terms">Terms of Service</a> <a href="/contact">Contact</a>
-<a href="/refund">Refund policy</a><button>Add to cart</button><p>We refund within 30 days. Ships in 3 days.</p>
+<a href="/refund">Refund policy</a><button>Add to cart</button><p>We refund within 30 days. Shipping takes 3 days.</p>
 %s</body></html>""" % (b"<p>filler text</p>" * 60)
 TERMS = b"<html><body>Terms of service text</body></html>"
 CONTACT = b"<html><body>Email us at help@goodshop.test</body></html>"
@@ -38,11 +38,13 @@ def test_assess_endpoint_end_to_end():
     data = r.json()
     assert data["count"] == 3                       # duplicate removed
     by_url = {x["url"]: x for x in data["results"]}
-    assert by_url[base + "/good"]["decision"] == "NO_HUMAN_REVIEW"
-    assert by_url[base + "/bare"]["decision"] == "HUMAN_REVIEW"
-    assert by_url[base + "/bare"]["flags"]["no_terms_of_service"] is True
+    assert by_url[base + "/good"]["routing_decision"] == "NO_HUMAN_REVIEW"
+    assert by_url[base + "/bare"]["routing_decision"] == "HUMAN_REVIEW"
+    flags = by_url[base + "/bare"]["risk_flags"]
+    assert flags["missing_terms_of_service"] and flags["ambiguous_refund_policy"] and flags["missing_contact_info"]
+    assert by_url[base + "/good"]["industry_classification"]["mcc"] == "5399"
     assert by_url["not a url"]["fetch_status"] == "invalid_url"
 
     csv = client.post("/assess?format=csv", json={"urls": [base + "/good"]})
-    assert csv.headers["content-type"].startswith("text/csv") and "NO_HUMAN_REVIEW" in csv.text
+    assert csv.headers["content-type"].startswith("text/csv") and "NO_HUMAN_REVIEW" in csv.text and "flag_missing_terms_of_service" in csv.text
     srv.shutdown()
