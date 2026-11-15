@@ -10,6 +10,7 @@ import httpx
 from ..config import get_config
 from ..schema import FetchStatus, Page, SiteData
 from .parser import find_page_links, get_domain, is_valid_url, normalize_url
+from .dynamic_handler import fetch_dynamic_page
 
 MIN_USEFUL_HTML = 500   # characters; below this we treat the page as "limited content"
 
@@ -63,12 +64,28 @@ async def fetch_site(client: httpx.AsyncClient, site_id: int, raw_url: str) -> S
         site.elapsed_seconds = time.perf_counter() - start
         return site
 
-    site.pages.append(Page(page_type="home", url=str(home.url), html=home.text))
-    if len(home.text) < MIN_USEFUL_HTML:
-        site.status = FetchStatus.LIMITED_CONTENT   # probably built with JavaScript
+    html = home.text
+    page_url = str(home.url)
 
-    # follow links to policy / contact / checkout pages
-    links = find_page_links(home.text, str(home.url))
+    # Try JavaScript rendering if the initial HTML is too short
+    if len(html) < MIN_USEFUL_HTML:
+        try:
+            dynamic_result = await fetch_dynamic_page(page_url)
+
+            if dynamic_result["status"] == "ok" and dynamic_result["html"]:
+                html = dynamic_result["html"]
+                page_url = dynamic_result["url"]
+
+        except Exception as e:
+            site.error = f"Dynamic fallback failed: {type(e).__name__}"
+
+    if len(html) < MIN_USEFUL_HTML:
+        site.status = FetchStatus.LIMITED_CONTENT
+
+    site.pages.append(Page(page_type="home", url=page_url, html=html))
+
+    # Follow links to policy / contact / checkout pages
+    links = find_page_links(html, page_url)
     wanted = [(t, u[0]) for t, u in links.items()][: cfg["max_pages_per_site"] - 1]
     results = await asyncio.gather(*[_get(client, u, 0) for _, u in wanted], return_exceptions=True)
     for (ptype, purl), res in zip(wanted, results):
