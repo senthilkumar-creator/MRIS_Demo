@@ -23,3 +23,12 @@ def test_terms_and_contact_pages():
 def test_missing_terms_and_contact():
     r = run_rules(SiteData(site_id=1, url="u", pages=[Page(page_type="home", url="u", html="<p>just a page</p>")]))
     assert not r.has_terms and not r.has_contact
+
+
+def test_refund_delivery_and_location_rules():
+    from mris.rules.engine import run_rules
+    s = SiteData(site_id=1, url="u", pages=[Page(page_type="home", url="u", text="We ship fast. Refund within 30 days. Visit us: 120 Main St, Calgary AB T2P 1A1", html="")])
+    r = run_rules(s)
+    assert r.refund_text_found and r.delivery_text_found and r.declared_location == "Calgary, AB, Canada"
+    none = run_rules(SiteData(site_id=2, url="u", pages=[Page(page_type="home", url="u", text="Welcome to our shop", html="")]))
+    assert not none.refund_text_found and not none.delivery_text_found and none.declared_location is None

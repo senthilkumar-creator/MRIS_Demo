@@ -1,0 +1,69 @@
+# Fixed industry list used by the LLM layer
+# Owner: Senthil
+# The model answers with the NUMBER only; the code looks up MCC / NAICS / description here.
+# DRAFT: codes were assembled by hand (MCC from card-network lists, NAICS 2022 from Census).
+# TODO: verify every code against the official lists, add categories seen in real sites.
+# physical: sells physical goods (delivery expected).  high_risk: category is restricted / high risk.
+categories:
+  - {id: 1, name: "Clothing and accessories", mcc: "5691", naics: "458110", physical: true, high_risk: false}
+  - {id: 2, name: "Shoes", mcc: "5661", naics: "458210", physical: true, high_risk: false}
+  - {id: 3, name: "Jewelry and watches", mcc: "5944", naics: "458310", physical: true, high_risk: false}
+  - {id: 4, name: "Luggage and leather goods", mcc: "5948", naics: "458320", physical: true, high_risk: false}
+  - {id: 5, name: "Furniture and home furnishings", mcc: "5712", naics: "449110", physical: true, high_risk: false}
+  - {id: 6, name: "Home decor and housewares", mcc: "5719", naics: "449129", physical: true, high_risk: false}
+  - {id: 7, name: "Consumer electronics and appliances", mcc: "5732", naics: "449210", physical: true, high_risk: false}
+  - {id: 8, name: "Computers and software (retail)", mcc: "5734", naics: "449210", physical: false, high_risk: false}
+  - {id: 9, name: "Department and general merchandise", mcc: "5311", naics: "455110", physical: true, high_risk: false}
+  - {id: 10, name: "Online marketplace or mixed general goods", mcc: "5399", naics: "455219", physical: true, high_risk: false}
+  - {id: 11, name: "Grocery and food stores", mcc: "5411", naics: "445110", physical: true, high_risk: false}
+  - {id: 12, name: "Specialty food and drink (non-alcohol)", mcc: "5499", naics: "445298", physical: true, high_risk: false}
+  - {id: 13, name: "Liquor, beer and wine", mcc: "5921", naics: "445320", physical: true, high_risk: true}
+  - {id: 14, name: "Restaurants and cafes", mcc: "5812", naics: "722511", physical: false, high_risk: false}
+  - {id: 15, name: "Fast food and takeout", mcc: "5814", naics: "722513", physical: false, high_risk: false}
+  - {id: 16, name: "Pharmacies and online drug sales", mcc: "5912", naics: "456110", physical: true, high_risk: true}
+  - {id: 17, name: "Cosmetics and beauty products", mcc: "5977", naics: "456120", physical: true, high_risk: false}
+  - {id: 18, name: "Health supplements and vitamins", mcc: "5499", naics: "456191", physical: true, high_risk: false}
+  - {id: 19, name: "Eyewear and optical goods", mcc: "8043", naics: "456130", physical: true, high_risk: false}
+  - {id: 20, name: "Sporting goods", mcc: "5941", naics: "459110", physical: true, high_risk: false}
+  - {id: 21, name: "Toys, hobbies and games", mcc: "5945", naics: "459120", physical: true, high_risk: false}
+  - {id: 22, name: "Books and music (physical)", mcc: "5942", naics: "459210", physical: true, high_risk: false}
+  - {id: 23, name: "Office supplies and stationery", mcc: "5111", naics: "459410", physical: true, high_risk: false}
+  - {id: 24, name: "Gifts, novelties and flowers", mcc: "5947", naics: "459420", physical: true, high_risk: false}
+  - {id: 25, name: "Pet supplies", mcc: "5995", naics: "459910", physical: true, high_risk: false}
+  - {id: 26, name: "Art, craft and sewing supplies", mcc: "5970", naics: "459130", physical: true, high_risk: false}
+  - {id: 27, name: "Hardware and home improvement", mcc: "5251", naics: "444130", physical: true, high_risk: false}
+  - {id: 28, name: "Garden and nursery", mcc: "5261", naics: "444240", physical: true, high_risk: false}
+  - {id: 29, name: "Auto parts and accessories", mcc: "5533", naics: "441330", physical: true, high_risk: false}
+  - {id: 30, name: "Car dealers", mcc: "5511", naics: "441110", physical: true, high_risk: false}
+  - {id: 31, name: "Auto repair and services", mcc: "7538", naics: "811111", physical: false, high_risk: false}
+  - {id: 32, name: "Digital games and apps", mcc: "5816", naics: "513210", physical: false, high_risk: false}
+  - {id: 33, name: "Digital media (music, video, ebooks)", mcc: "5815", naics: "516210", physical: false, high_risk: false}
+  - {id: 34, name: "Software and SaaS subscriptions", mcc: "5817", naics: "518210", physical: false, high_risk: false}
+  - {id: 35, name: "IT services and web development", mcc: "7372", naics: "541511", physical: false, high_risk: false}
+  - {id: 36, name: "Marketing, advertising and PR", mcc: "7311", naics: "541810", physical: false, high_risk: false}
+  - {id: 37, name: "Business and management consulting", mcc: "7392", naics: "541611", physical: false, high_risk: false}
+  - {id: 38, name: "Legal services", mcc: "8111", naics: "541110", physical: false, high_risk: false}
+  - {id: 39, name: "Accounting and bookkeeping", mcc: "8931", naics: "541211", physical: false, high_risk: false}
+  - {id: 40, name: "Design, photography and creative services", mcc: "7333", naics: "541430", physical: false, high_risk: false}
+  - {id: 41, name: "Tutoring and exam preparation", mcc: "8299", naics: "611691", physical: false, high_risk: false}
+  - {id: 42, name: "Schools and universities", mcc: "8220", naics: "611310", physical: false, high_risk: false}
+  - {id: 43, name: "Online courses and training", mcc: "8299", naics: "611430", physical: false, high_risk: false}
+  - {id: 44, name: "Medical and dental practices", mcc: "8011", naics: "621111", physical: false, high_risk: false}
+  - {id: 45, name: "Beauty salons and spas", mcc: "7230", naics: "812112", physical: false, high_risk: false}
+  - {id: 46, name: "Fitness clubs and gyms", mcc: "7997", naics: "713940", physical: false, high_risk: false}
+  - {id: 47, name: "Travel agencies and tours", mcc: "4722", naics: "561510", physical: false, high_risk: false}
+  - {id: 48, name: "Hotels and lodging", mcc: "7011", naics: "721110", physical: false, high_risk: false}
+  - {id: 49, name: "Events and ticketing", mcc: "7922", naics: "711310", physical: false, high_risk: false}
+  - {id: 50, name: "Courier and delivery services", mcc: "4215", naics: "492110", physical: false, high_risk: false}
+  - {id: 51, name: "Real estate and rentals", mcc: "6513", naics: "531210", physical: false, high_risk: false}
+  - {id: 52, name: "Insurance", mcc: "6300", naics: "524210", physical: false, high_risk: false}
+  - {id: 53, name: "Charities and nonprofits", mcc: "8398", naics: "813219", physical: false, high_risk: false}
+  - {id: 54, name: "Telecommunications and internet services", mcc: "4814", naics: "517111", physical: false, high_risk: false}
+  - {id: 55, name: "Subscription boxes and memberships", mcc: "5968", naics: "459999", physical: true, high_risk: false}
+  - {id: 56, name: "Tobacco, vape and e-cigarettes", mcc: "5993", naics: "459991", physical: true, high_risk: true}
+  - {id: 57, name: "Firearms, ammunition and weapons", mcc: "5941", naics: "459110", physical: true, high_risk: true}
+  - {id: 58, name: "Cannabis and CBD products", mcc: "5999", naics: "459999", physical: true, high_risk: true}
+  - {id: 59, name: "Gambling and betting", mcc: "7995", naics: "713290", physical: false, high_risk: true}
+  - {id: 60, name: "Adult entertainment and dating", mcc: "7273", naics: "812990", physical: false, high_risk: true}
+  - {id: 61, name: "Cryptocurrency and money transfer", mcc: "6051", naics: "522320", physical: false, high_risk: true}
+  - {id: 62, name: "Other or unclear", mcc: "", naics: "", physical: false, high_risk: false}

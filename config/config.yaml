@@ -8,12 +8,25 @@ fetch:
 batch:
   chunk_size: 200                # sites held in memory at once
 llm:
-  mode: "ollama"                 # "ollama" or "mock" (mock needs no model; use for tests)
-  base_url: "http://localhost:11434"
-  model: "llama3.1:8b"           # candidates: llama3.1:8b, mistral:7b, qwen2.5:7b
+  # mode: "ollama"                 # "ollama" (local), "openai" (hosted or any OpenAI-compatible server) or "mock" (tests)
+  # base_url: "http://localhost:11434"
+  # model: "llama3.1:8b"           # local candidates: llama3.1:8b, mistral:7b (do not use 3b models: too inaccurate)
+  # --- hosted example (set MRIS_LLM_API_KEY in your environment; check the provider's current URL, model names,
+  # --- free-tier limits and terms before use) ---
+  # mode: "openai"
+  # base_url: "https://generativelanguage.googleapis.com/v1beta/openai"   # Google Gemini, OpenAI-compatible
+  # model: "gemini-3.8-flash"
+  # reasoning_effort: "none"
+  #   (Groq: base_url "https://api.groq.com/openai/v1", model "llama-3.1-8b-instant")
+  mode: "openai"
+  base_url: "https://api.groq.com/openai/v1"
+  model: "openai/gpt-oss-20b"
+  reasoning_effort: low
   temperature: 0
   timeout_seconds: 30
-  max_chars_per_site: 6000       # text budget sent to the LLM
+  max_chars_per_site: 3000       # text budget sent to the LLM (less text = faster on CPU; tune in Phase 4)
+  max_output_tokens: 400         # hard cap on the length of the model answer
 decision:
   confidence_threshold: 0.7      # LLM field below this = uncertain -> HUMAN_REVIEW
   domain_age_days_threshold: 180
+  review_on_young_domain: true   # the proposal example routes young domains to review; set false to only note them

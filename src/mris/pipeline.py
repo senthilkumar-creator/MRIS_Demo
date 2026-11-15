@@ -28,7 +28,7 @@ async def assess_one(web: httpx.AsyncClient, llm_client: httpx.AsyncClient, site
         clean_site(site)
     rules = run_rules(site)
     free_raw_html(site)                       # raw HTML no longer needed after the rules ran
-    llm = await analyze_site(llm_client, site) if site.status == FetchStatus.OK else LLMResult(valid=False, error="skipped")
+    llm = await analyze_site(llm_client, site, rules) if site.status == FetchStatus.OK else LLMResult(valid=False, error="skipped")
     return decide(site, rules, llm)
 
 
@@ -51,13 +51,27 @@ async def assess_urls(urls: List[str]) -> AssessResponse:
 
 
 def results_to_dataframe(results: List[SiteResult]):
-    """One row per site for the CSV output."""
+    """One row per site for the CSV output (same fields as the JSON, flattened)."""
     import pandas as pd
     rows = []
     for r in results:
         rows.append({
-            "url": r.url, "decision": r.decision.value, "mcc": r.mcc, "naics": r.naics, "industry": r.industry,
-            **{f"flag_{k}": v for k, v in r.flags.items()},
-            "fetch_status": r.fetch_status.value, "reasons": " | ".join(r.reasons), "seconds": r.elapsed_seconds,
+            "url": r.url,
+            "routing_decision": r.routing_decision.value,
+            "requires_human_review": r.requires_human_review,
+            "mcc": r.industry_classification.mcc,
+            "naics": r.industry_classification.naics,
+            "industry_description": r.industry_classification.description,
+            "industry_confidence": r.industry_classification.confidence_score,
+            "product_match": r.product_industry_match.is_match,
+            "product_match_confidence": r.product_industry_match.confidence_score,
+            "has_working_checkout": r.has_working_checkout,
+            "detected_gateways": ";".join(r.detected_gateways),
+            **{f"flag_{k}": v for k, v in r.risk_flags.model_dump().items()},
+            "domain_age_days": r.business_info.domain_age_days,
+            "location": r.business_info.location,
+            "review_reasons": " | ".join(r.review_reasons),
+            "llm_validation_notes": r.llm_validation_notes,
+            "fetch_status": r.fetch_status.value,
         })
     return pd.DataFrame(rows)

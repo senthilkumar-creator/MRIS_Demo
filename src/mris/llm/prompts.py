@@ -1,41 +1,45 @@
-"""Prompt for the LLM layer. Owners: Member 3 (industry / MCC-NAICS part), Member 4 (risk part).
+"""Prompt for the LLM layer. Owners: Member 3 (industry / product match), Member 4 (risk questions).
 
-One combined call per site keeps latency low. Keep the JSON shape in sync with schema.LLMResult.
-TODO: compare zero-shot vs few-shot examples on the development set (see eval/).
+Design for speed (CPU-only machines are slow at WRITING text):
+- the model answers with NUMBERS and true/false only: an industry number from config/industries.yaml,
+  never MCC / NAICS codes (the code looks those up), and no explanations or quotes
+- only the questions that rules cannot settle are asked (no refund text on the site = rules already know)
+- the fixed instructions come FIRST and the website text LAST so the model server can reuse its work on the
+  unchanged start of the prompt between calls
+Keep the JSON keys in sync with analyze.parse_llm_json.
 """
+from typing import Iterable, Optional
+from ..industries import prompt_list
 
-SYSTEM_PROMPT = """You are a merchant-risk analyst for a payment processor. You read text taken from a merchant website
-and answer ONLY with one JSON object. Never add explanations outside the JSON.
-Base every answer on the text provided. If the text does not contain the information, set the value to null
-and give a low confidence. Confidence is a number from 0 to 1."""
+SYSTEM_PROMPT = (
+    "You are a merchant-risk analyst for a payment processor. Answer ONLY with one short JSON object, "
+    "no explanations. Base answers on the website text. If the text does not say, use null and a low confidence. "
+    "Confidence is a number from 0 to 1."
+)
 
-USER_TEMPLATE = """Website text (may be truncated):
-\"\"\"
-{text}
-\"\"\"
-
-Return JSON with exactly these keys:
-{{
-  "industry": "short industry name",
-  "mcc": "4-digit MCC code or null",
-  "naics": "2 to 6 digit NAICS code or null",
-  "industry_confidence": 0.0,
-  "product_matches_industry": true or false or null,
-  "product_match_confidence": 0.0,
-  "refund_ambiguous":  {{"value": true or false or null, "confidence": 0.0, "evidence": "short quote"}},
-  "delivery_risk":     {{"value": true or false or null, "confidence": 0.0, "evidence": "short quote"}},
-  "restricted_goods":  {{"value": true or false or null, "confidence": 0.0, "evidence": "short quote"}}
-}}
-
-Definitions:
-- refund_ambiguous: true if the refund / return policy is missing, vague, or contradictory (no time limit, no process).
-- delivery_risk: true if delivery times are missing, very long, unclear, or the site promises pre-orders without dates.
-- restricted_goods: true if the site sells restricted or prohibited goods (weapons, drugs, counterfeit items, etc.).
-- product_matches_industry: true if the products shown match the industry you chose."""
+# every question the model can be asked: key -> (JSON template fragment, definition)
+FIELDS = {
+    "industry": ('"industry_id": 0, "industry_conf": 0.0',
+                 "industry_id: the number of the best matching industry in the list above (use the last number if unsure)."),
+    "product_match": ('"product_match": true/false/null, "product_conf": 0.0',
+                      "product_match: true if the products or services sold match the industry you chose."),
+    "refund": ('"refund_ambiguous": true/false/null, "refund_conf": 0.0',
+               "refund_ambiguous: true if the refund or return policy is vague, contradictory, or has no time limit or process."),
+    "delivery": ('"delivery_risk": true/false/null, "delivery_conf": 0.0',
+                 "delivery_risk: true if delivery times are unclear, very long, or pre-orders have no dates."),
+    "restricted": ('"restricted_goods": true/false/null, "restricted_conf": 0.0',
+                   "restricted_goods: true if the site sells restricted or prohibited goods (weapons, drugs, counterfeit items)."),
+}
+ALL_FIELDS = tuple(FIELDS)
 
 
-def build_messages(text: str) -> list:
-    return [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": USER_TEMPLATE.format(text=text)},
-    ]
+def build_messages(text: str, asked: Optional[Iterable[str]] = None) -> list:
+    asked = [f for f in ALL_FIELDS if asked is None or f in set(asked)]
+    template = ", ".join(FIELDS[f][0] for f in asked)
+    definitions = "\n".join("- " + FIELDS[f][1] for f in asked)
+    user = (
+        "Industries (choose one number):\n" + prompt_list() + "\n\n"
+        "Return JSON with exactly these keys: {" + template + "}\n" + definitions +
+        "\n\nWebsite text (may be cut off):\n" + text
+    )
+    return [{"role": "system", "content": SYSTEM_PROMPT}, {"role": "user", "content": user}]

@@ -4,10 +4,10 @@ Flow of data between modules:
   scraper  -> SiteData (pages + fetch status)
   rules    -> RuleResult
   llm      -> LLMResult
-  decision -> SiteResult  (what the API returns)
+  decision -> SiteResult  (what the API returns; follows the example JSON in the project proposal)
 """
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -26,15 +26,6 @@ class FetchStatus(str, Enum):
     NOT_FOUND = "not_found"
     INVALID_URL = "invalid_url"
     ERROR = "error"
-
-
-class Flag(str, Enum):
-    """The five risk flags from the project brief."""
-    DELAYED_DELIVERY = "delayed_delivery"
-    RESTRICTED_GOODS = "restricted_goods"
-    NO_TERMS_OF_SERVICE = "no_terms_of_service"
-    AMBIGUOUS_REFUND = "ambiguous_refund"
-    MISSING_CONTACT = "missing_contact"
 
 
 # ---------- API input ----------
@@ -67,6 +58,8 @@ class RuleResult(BaseModel):
     checkout_detected: bool = False
     has_terms: bool = False
     has_contact: bool = False
+    refund_text_found: bool = False         # any refund / return wording on the site
+    delivery_text_found: bool = False       # any shipping / delivery wording on the site
     domain_age_days: Optional[int] = None
     young_domain: Optional[bool] = None
     declared_location: Optional[str] = None
@@ -77,37 +70,69 @@ class RuleResult(BaseModel):
 class FieldJudgement(BaseModel):
     value: Optional[bool] = None            # True = risk present
     confidence: float = 0.0                 # 0..1
-    evidence: str = ""                      # short quote from the page
+    evidence: str = ""
 
 
 class LLMResult(BaseModel):
-    industry: str = ""
-    mcc: Optional[str] = None
+    industry_id: Optional[int] = None       # number from config/industries.yaml
+    industry: str = ""                      # description from the lookup table
+    mcc: Optional[str] = None               # from the lookup table, never invented by the model
     naics: Optional[str] = None
+    physical_goods: Optional[bool] = None   # from the lookup table
+    high_risk_category: bool = False        # from the lookup table
     industry_confidence: float = 0.0
     product_matches_industry: Optional[bool] = None
     product_match_confidence: float = 0.0
     refund_ambiguous: FieldJudgement = FieldJudgement()
     delivery_risk: FieldJudgement = FieldJudgement()
     restricted_goods: FieldJudgement = FieldJudgement()
+    asked: List[str] = []                   # fields the model was asked about (others are decided by rules)
     valid: bool = True                      # False if the model output could not be parsed
     error: Optional[str] = None
 
 
-# ---------- final result returned by the API ----------
-class SiteResult(BaseModel):
-    site_id: int
-    url: str
-    decision: Decision
+# ---------- final result: same structure as the example JSON in the proposal ----------
+class IndustryClassification(BaseModel):
     mcc: Optional[str] = None
     naics: Optional[str] = None
-    industry: str = ""
-    flags: Dict[str, bool] = {}             # the five flags -> True/False
-    confidences: Dict[str, float] = {}
-    reasons: List[str] = []
+    description: str = ""
+    confidence_score: float = 0.0
+
+
+class ProductIndustryMatch(BaseModel):
+    is_match: Optional[bool] = None
+    confidence_score: float = 0.0
+    details: str = ""
+
+
+class RiskFlags(BaseModel):
+    missing_terms_of_service: bool = False
+    ambiguous_refund_policy: bool = False
+    delayed_delivery: bool = False
+    restricted_goods: bool = False
+    missing_contact_info: bool = False
+
+
+class BusinessInfo(BaseModel):
+    domain_age_days: Optional[int] = None
+    location: Optional[str] = None
+
+
+class SiteResult(BaseModel):
+    url: str
+    routing_decision: Decision
+    requires_human_review: bool
+    review_reasons: List[str] = []
+    has_working_checkout: bool = False
+    detected_gateways: List[str] = []
+    industry_classification: IndustryClassification = IndustryClassification()
+    product_industry_match: ProductIndustryMatch = ProductIndustryMatch()
+    risk_flags: RiskFlags = RiskFlags()
+    business_info: BusinessInfo = BusinessInfo()
+    llm_validation_notes: str = ""
+    # extra fields (not in the proposal example) so failures are visible
     fetch_status: FetchStatus = FetchStatus.OK
     error: Optional[str] = None
-    elapsed_seconds: float = 0.0
 
 
 class AssessResponse(BaseModel):

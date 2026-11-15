@@ -25,8 +25,9 @@ if st.button("Assess merchants", disabled=not urls):
     if r.ok:
         data = r.json()
         st.success(f"{data['count']} sites in {data['elapsed_seconds']} seconds")
-        rows = [{"url": x["url"], "decision": x["decision"], "industry": x["industry"], "mcc": x["mcc"],
-                 "reasons": " | ".join(x["reasons"])} for x in data["results"]]
+        rows = [{"url": x["url"], "decision": x["routing_decision"],
+                 "industry": x["industry_classification"]["description"], "mcc": x["industry_classification"]["mcc"],
+                 "reasons": " | ".join(x["review_reasons"])} for x in data["results"]]
         df = pd.DataFrame(rows)
         only_review = st.checkbox("Show only HUMAN_REVIEW")
         st.dataframe(df[df["decision"] == "HUMAN_REVIEW"] if only_review else df, use_container_width=True)
