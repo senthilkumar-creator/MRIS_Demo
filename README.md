@@ -1,81 +1,87 @@
-# MRIS – Merchant Risk Intelligence System (RiskLens AI)
+# RiskLens AI — Merchant Risk Intelligence System (MRIS)
 
-Takes a list of merchant website URLs and returns, for each site, **HUMAN_REVIEW / NO_HUMAN_REVIEW**,
-an MCC / NAICS classification, the five risk flags and the reasons.
-Stack: FastAPI · BeautifulSoup · open-source LLM (Ollama) · in-memory data · optional Streamlit UI.
+**Updated codebase for the first three project tasks:** scraper/crawler design, core HTML/text/script extraction, and bounded batch/concurrent processing.
 
-This skeleton already runs end to end with a **mock LLM** (no model needed), so every member can start
-on their own module straight away. All tests pass: `python -m pytest`.
+This repository **extends** the original `MRIS_Demo-main` starter. Existing `POST /assess` merchant decisions, rule modules, gateway checks, domain-age code, LLM clients, evaluation utilities and original tests remain in place. A new **`POST /scrape`** endpoint and a responsive browser dashboard provide a standalone scraper playground without requiring an LLM or Streamlit.
 
-## 1. Setup (each member, once)
+## Fastest way to run
+
+On Windows, **extract this repository and double-click `run_dashboard.bat`**. On Linux/macOS, run `bash run_dashboard.sh`. Both launch the local web application at:
+
+**http://127.0.0.1:8000/ui**
+
+API documentation: **http://127.0.0.1:8000/docs**
+
+The first run installs the minimal server packages automatically into a project `.venv` (internet connection needed once). Python 3.11+ is recommended.
+
+> The supplied launchers set `MRIS_LLM_MODE=mock` so that the existing assessment can be demonstrated without a paid model service. **Mock results are illustrative, not real risk decisions.** The scraping feature accesses actual public websites independently of LLM mode.
+
+**[Dashboard preview](docs/dashboard_preview.png)** (visual sample; no live merchant data shown).
+
+## What works now
+
+- Paste a URL list or upload CSV/TXT; one-click scraper or existing risk assessment
+- Crawls merchant home, Terms, refund, shipping, contact and checkout links on the same host
+- Extracts visible text, raw HTML previews and inline/external-script metadata
+- Optionally fetches up to 3 same-origin JavaScript files per site without executing them
+- URL validation, DNS/private network screening, robots.txt, retries, rate limits and capped downloads
+- Bounded parallel HTTP requests, per-host limits and batch scheduling
+- JSON/CSV downloads, site-status browsing, per-page tabs and responsive dashboard
+- CLI, API docs, controlled offline benchmark and regression tests
+
+## One-minute API example
 
 ```bash
-git clone https://github.com/senthilkumar-creator/MRIS_Demo.git && cd mris
-python -m venv .venv
-# Windows:  .venv\Scripts\activate        Mac/Linux:  source .venv/bin/activate
-pip install -r requirements.txt
-python -m pytest            # should show all tests passing
+curl -X POST http://127.0.0.1:8000/scrape \
+  -H "Content-Type: application/json" \
+  -d '{"urls":["https://example.com"],"include_html":true}'
 ```
 
-## 2. Run it
+For the **original MRIS assessment** contract:
 
 ```bash
-# API (mock LLM, no model needed)
-# Windows PowerShell:  $env:MRIS_LLM_MODE="mock"      Mac/Linux:  export MRIS_LLM_MODE=mock
-uvicorn mris.api:app --reload --app-dir src
-# open http://localhost:8000/docs  ->  POST /assess  ->  {"urls": ["https://example.com"]}
-# add ?format=csv to get a CSV instead of JSON
+curl -X POST http://127.0.0.1:8000/assess \
+  -H "Content-Type: application/json" \
+  -d '{"urls":["https://example.com"]}'
 ```
 
-Real LLM (Member 3 sets this up first, see section 4):
+## CLI (from repository root)
+
 ```bash
-ollama pull llama3.1:8b        # install Ollama first: https://ollama.com
-# then remove MRIS_LLM_MODE (config/config.yaml already says mode: ollama)
+# Linux/macOS
+PYTHONPATH=src python -m mris.cli scrape --url https://example.com --include-html -o output/example.json
+PYTHONPATH=src python -m mris.cli scrape --file data/urls_sample.csv -o output/sites.csv
+
+# Windows PowerShell
+$env:PYTHONPATH="src"
+python -m mris.cli scrape --url https://example.com -o output/example.json
 ```
 
-Optional UI (build last):  `streamlit run src/mris/ui/streamlit_app.py`
+## Documentation
 
-## 3. How the code maps to the architecture diagram
+**Read [`docs/TASKS_1_TO_3_IMPLEMENTATION.md`](docs/TASKS_1_TO_3_IMPLEMENTATION.md)** for the three tasks broken down step by step: architecture, repository tree, exact file responsibilities, endpoints, CLI examples, security measures, concurrency design, limitations, setup and tests.
 
+To test the entire project, use `pip install -r requirements.txt` followed by `python -m pytest -q`. The included offline benchmark is `python scripts/benchmark_scraper.py --sites 100 --workers 30`.
+
+## Important constraints
+
+- The 100-sites/60-seconds and 10,000-site requirements are **targets**, not yet validated against live merchants or the full LLM pipeline. The benchmark script uses mocked responses.
+- Playwright/Chromium rendering is optional and **disabled by default**. See the detailed guide to enable it locally.
+- This is a **local development prototype**. Before exposing it publicly, implement authentication, traffic quotas and network-level egress protection against DNS rebinding. Respect robots.txt and website policies.
+- Existing `config/config.yaml` configures the risk LLM mode for other team tasks. The launchers deliberately override it with the demonstration/mock LLM.
+
+### Crawling access troubleshooting (November 2026 maintenance update)
+
+If every website displays `BLOCKED` and `0 pages`, see
+[docs/ROBOTS_TROUBLESHOOTING.md](docs/ROBOTS_TROUBLESHOOTING.md). The crawler
+now reports `robots_unavailable` separately from explicit access restrictions;
+it does **not** bypass robots.txt. In PowerShell, run `.\diagnose_access.bat` or the included Python diagnostic:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\diagnose_access.py
 ```
-config/                      config.yaml (all thresholds), gateway_signatures.yaml
-src/mris/schema.py           SHARED DATA CONTRACT - change only through a pull request
-src/mris/api.py              FastAPI: POST /assess, GET /health            (stage 1)
-src/mris/scraper/            fetcher.py, parser.py (BeautifulSoup)          (stage 2)
-src/mris/processing/         clean.py - cleaning, text for the LLM          (stage 3)
-src/mris/rules/              gateway.py, policy.py, domain_age.py, engine.py (stage 4a)
-src/mris/llm/                client.py (Ollama), prompts.py, analyze.py     (stage 4b)
-src/mris/decision/engine.py  routing rule                                   (stage 5)
-src/mris/pipeline.py         glues the stages, concurrency, chunks
-src/mris/eval/               metrics.py, run_eval.py
-src/mris/ui/                 streamlit_app.py (optional)
-tests/                       pytest tests (add one per feature)
-data/                        urls_sample.csv, labels_template.csv
-```
 
-## 4. Who starts where (suggested – adjust as a team)
-
-| Member | Module | First tasks |
-|---|---|---|
-| 1 | `scraper/fetcher.py`, `pipeline.py`, `api.py` | Test fetching on 20 real sites; measure time per stage; try concurrency 10/30/50 |
-| 2 | error statuses, `api.py` output, `ui/` | Test blocked / timeout / JavaScript-only sites; location cues (`declared_location`); Streamlit last |
-| 3 | `rules/gateway.py`, `llm/client.py`, MCC/NAICS part of `prompts.py` | **Install Ollama and run the latency test first**; signature catalogue; MCC/NAICS table |
-| 4 | `rules/policy.py`, `llm/analyze.py`, risk part of `prompts.py`, `decision/engine.py` | ToS and contact edge cases; prompts for refund / delivery / restricted goods; threshold tuning |
-| 5 | `rules/domain_age.py`, `processing/clean.py`, `eval/` | RDAP incl. `.ca` domains; label the benchmark; run `eval/run_eval.py` |
-
-Everyone: label 10 sites each into `data/labels_template.csv` (copy it to `data/labels_test.csv`).
-
-## 5. Team rules (keep five people from colliding)
-
-1. Work on a branch (`git checkout -b member3-gateway`), open a pull request, get one review, then merge.
-2. Do not change `schema.py` without telling everyone.
-3. Every new rule or bug fix gets a test in `tests/`.
-4. Do not commit real API keys or large data files (`.gitignore` covers `output/`).
-5. Put thresholds in `config/config.yaml`, not in code.
-
-## 6. Known limits (write these in the report)
-
-- BeautifulSoup reads static HTML only: JavaScript-built sites get status `limited_content` -> HUMAN_REVIEW.
-- Data lives in memory for one run; large runs are processed in chunks (`batch.chunk_size`).
-- The skeleton's rules are first versions (substring matching). Expect to improve them on real sites.
-- Be polite when scraping: keep timeouts, a clear User-Agent, and do not hammer one site.
+If a trusted corporate/university proxy is required, optional environment
+proxy support can be enabled with `$env:MRIS_TRUST_ENV="1"` before launching.
+The default remains off. This update preserves the API request format and
+original assessment pipeline.
