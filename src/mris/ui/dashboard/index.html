@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#080d1b" />
+  <title>RiskLens AI | Merchant Intelligence</title>
+  <link rel="stylesheet" href="/assets/style.css" />
+</head>
+<body>
+  <div class="ambient ambient-a"></div><div class="ambient ambient-b"></div>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand"><div class="brand-mark"><svg viewBox="0 0 28 28" fill="none"><path d="M14 2 25 7v7c0 7-4.8 11.3-11 13C7.8 25.3 3 21 3 14V7L14 2Z" stroke="currentColor" stroke-width="2"/><path d="m8 14 4 4 8-8" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/></svg></div><div><strong>RiskLens <span>AI</span></strong><small>MERCHANT INTELLIGENCE</small></div></div>
+      <p class="nav-label">WORKSPACE</p>
+      <button class="nav-item active" data-view="overview"><span class="nav-icon">◫</span>Overview</button>
+      <button class="nav-item" data-view="scraper"><span class="nav-icon">⌘</span>Web Scraper<span class="nav-dot"></span></button>
+      <button class="nav-item" data-view="assessment"><span class="nav-icon">◇</span>Risk Assessment</button>
+      <div class="nav-divider"></div>
+      <p class="nav-label">RESOURCES</p>
+      <a class="nav-item nav-link" href="/docs" target="_blank" rel="noopener"><span class="nav-icon">{ }</span>API Documentation<span class="outbound">↗</span></a>
+      <div class="sidebar-bottom"><div class="support-mark">R</div><div><b>RiskLens Research</b><small>MRIS • Research prototype</small></div></div>
+    </aside>
+    <main class="main">
+      <header class="topbar"><div class="breadcrumb">WORKSPACE <span>/</span> <strong id="breadName">Overview</strong></div><div class="top-actions"><span class="clock" id="today"></span><span class="connection"><i id="healthDot"></i><span id="healthText">Checking API</span></span></div></header>
+      <section class="page-head"><div><span class="eyebrow">MERCHANT RISK INTELLIGENCE SYSTEM</span><h1 id="pageTitle">Intelligence overview<span class="title-period">.</span></h1><p id="pageSubtitle">Scrape merchant websites, inspect page content, and review risk signals from one workspace.</p></div><div class="head-ornament" aria-hidden="true">✦</div></section>
+      <div class="hero-band"><div class="hero-icon">✧</div><div><strong>Turn websites into structured intelligence</strong><p>Privacy-conscious crawling • bounded concurrency • interpretable output</p></div><button class="hero-button" id="quickStart">Start scraping <span>↗</span></button></div>
+      <section class="metrics" aria-label="Run statistics"><article class="metric"><div class="metric-top">Merchants processed <span>◈</span></div><div class="metric-value" id="statSites">—</div><small>Latest completed run</small></article><article class="metric"><div class="metric-top">Pages extracted <span>▤</span></div><div class="metric-value" id="statPages">—</div><small>Across all inspected URLs</small></article><article class="metric"><div class="metric-top">Scripts detected <span>⌁</span></div><div class="metric-value" id="statScripts">—</div><small>Inline + referenced files</small></article><article class="metric"><div class="metric-top">Elapsed time <span>◷</span></div><div class="metric-value" id="statTime">—</div><small>Measured by the API</small></article></section>
+      <div class="workspace-grid">
+        <section class="panel input-panel" id="inputPanel"><div class="panel-heading"><div><div class="section-kicker">01 / INPUT</div><h2 id="inputHeading">Start a web scraping run</h2><p class="subtle">Add merchant URLs, or upload a list to analyze.</p></div><span class="soft-icon">↗</span></div>
+          <div class="mode-switch" role="tablist" aria-label="Processing mode"><button class="mode active" data-mode="scrape" role="tab" aria-selected="true">⌘ &nbsp; Scrape content</button><button class="mode" data-mode="assess" role="tab" aria-selected="false">◇ &nbsp; Assess risk</button></div>
+          <label class="field-label" for="urlInput">WEBSITE URLS <span id="urlCount">0 entered</span></label>
+          <textarea id="urlInput" spellcheck="false" placeholder="https://example.com&#10;https://www.your-merchant-site.com&#10;another-store.com" aria-describedby="urlHint"></textarea>
+          <div class="input-meta" id="urlHint"><span>One URL per line • HTTPS assumed when omitted</span><button class="text-button" id="clearUrls">Clear all</button></div>
+          <div class="upload-box" id="dropzone"><span class="upload-symbol">⇧</span><div><strong>Import a CSV or TXT file</strong><small>Drag & drop, or choose a file with a URL column</small></div><label class="upload-choose" for="fileInput">Browse</label><input id="fileInput" type="file" accept=".csv,.txt,text/csv,text/plain" hidden /></div>
+          <div id="scrapeOptions" class="options"><label class="checkbox-line"><input type="checkbox" id="includeHtml" checked /> Include raw HTML preview <span class="hint">up to 20,000 chars/page</span></label><label class="checkbox-line"><input type="checkbox" id="includeScripts" checked /> Include inline script content <span class="hint">external script URLs always listed</span></label><label class="checkbox-line"><input type="checkbox" id="fetchExternalScripts" /> Fetch same-site JavaScript files <span class="hint">optional; up to 3/site</span></label></div>
+          <div class="submit-row"><span id="runLimit">Maximum 250 URLs per scraping request</span><button class="primary-btn" id="runButton"><span id="runLabel">Run web scraper</span><span id="runArrow">→</span><span class="spinner hidden" id="spinner"></span></button></div>
+          <p role="alert" aria-live="polite" class="message hidden" id="message"></p>
+        </section>
+        <aside class="right-stack"><div class="panel how-panel"><div class="section-kicker">HOW IT WORKS</div><h2>From URLs to insight</h2><div class="steps"><div class="step"><span>01</span><div><strong>Validate & schedule</strong><p>Normalize input and distribute jobs across bounded async workers.</p></div></div><div class="step"><span>02</span><div><strong>Crawl & extract</strong><p>Read the homepage, discover key policy links, and extract visible text and scripts.</p></div></div><div class="step"><span>03</span><div><strong>Review & export</strong><p>Explore page-level results or run the existing risk assessment pipeline.</p></div></div></div></div><div class="panel note-panel"><div class="section-kicker">BUILT FOR RESPONSIBLE CRAWLING</div><h3>Safer by design <span>✳</span></h3><p>Robots.txt checks, per-host rate limits, bounded response sizes and explicit failure statuses. Scraping respects public page access restrictions.</p></div></aside>
+      </div>
+      <section class="panel output-panel" id="outputPanel"><div class="results-head"><div><div class="section-kicker">02 / RESULTS</div><h2>Extraction results <span class="result-count" id="resultCount">0</span></h2><p id="resultsSubtitle" class="subtle">Your completed runs will appear here.</p></div><div class="download-actions"><button id="downloadJson" disabled>↓ JSON</button><button id="downloadCsv" disabled>↓ CSV</button></div></div>
+        <div class="empty-state" id="emptyState"><div class="empty-art"><span>⌘</span></div><strong>No results yet</strong><p>Enter a merchant website and start a run to preview extracted page content.</p><button id="emptyStart">Enter URLs →</button></div>
+        <div id="resultsBody" class="results-body hidden"><div id="resultsAlert" class="results-alert hidden" role="status"></div><div class="result-controls"><div class="search-control"><span>⌕</span><input type="search" id="filterInput" placeholder="Search result websites..." aria-label="Filter websites" /></div><select id="statusFilter" aria-label="Filter by status"><option value="all">All statuses</option><option value="ok">Successful</option><option value="limited_content">Limited content</option><option value="robots_unavailable">Robots unavailable</option><option value="blocked">Blocked</option><option value="failed">Failed</option></select></div><div class="results-layout"><div class="site-list" id="siteList" aria-label="Scraped websites"></div><div class="site-detail" id="siteDetail"></div></div></div>
+      </section>
+      <footer>RiskLens AI <span>•</span> MRIS prototype <span>•</span> For research and human-supported review</footer>
+    </main>
+  </div>
+  <script src="/assets/app.js" defer></script>
+</body>
+</html>

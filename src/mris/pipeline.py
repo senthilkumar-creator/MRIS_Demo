@@ -11,6 +11,7 @@ from typing import List
 
 import httpx
 
+from .batch import process_chunks
 from .config import get_config
 from .decision.engine import decide
 from .llm.analyze import analyze_site
@@ -19,34 +20,51 @@ from .rules.domain_age import lookup_domain_age
 from .rules.engine import run_rules
 from .schema import AssessResponse, FetchStatus, LLMResult, SiteResult
 from .scraper.fetcher import fetch_site, make_client
+from .scraper.policy import CrawlPolicy
 
 
-async def assess_one(web: httpx.AsyncClient, llm_client: httpx.AsyncClient, site_id: int, url: str) -> SiteResult:
-    site = await fetch_site(web, site_id, url)
+async def assess_one(web: httpx.AsyncClient, llm_client: httpx.AsyncClient,
+                     site_id: int, url: str, policy: CrawlPolicy | None = None,
+                     fetch_sem: asyncio.Semaphore | None = None,
+                     llm_sem: asyncio.Semaphore | None = None,
+                     domain_age_sem: asyncio.Semaphore | None = None) -> SiteResult:
+    """Fetch and LLM stages have separate limits so slow inference cannot occupy fetch slots."""
+    if fetch_sem is None:
+        site = await fetch_site(web, site_id, url, policy)
+    else:
+        async with fetch_sem:
+            site = await fetch_site(web, site_id, url, policy)
     if site.pages:
-        site.domain_age_days = await lookup_domain_age(web, site.domain)
+        if domain_age_sem is None:
+            site.domain_age_days = await lookup_domain_age(web, site.domain)
+        else:
+            async with domain_age_sem:
+                site.domain_age_days = await lookup_domain_age(web, site.domain)
         clean_site(site)
     rules = run_rules(site)
-    free_raw_html(site)                       # raw HTML no longer needed after the rules ran
-    llm = await analyze_site(llm_client, site, rules) if site.status == FetchStatus.OK else LLMResult(valid=False, error="skipped")
+    free_raw_html(site)  # release HTML before entering slower LLM queue
+    if site.status == FetchStatus.OK:
+        if llm_sem is None:
+            llm = await analyze_site(llm_client, site, rules)
+        else:
+            async with llm_sem:
+                llm = await analyze_site(llm_client, site, rules)
+    else:
+        llm = LLMResult(valid=False, error="skipped")
     return decide(site, rules, llm)
 
 
 async def assess_urls(urls: List[str]) -> AssessResponse:
     cfg = get_config()
     start = time.perf_counter()
-    sem = asyncio.Semaphore(cfg["fetch"]["max_concurrent_sites"])
-    results: List[SiteResult] = []
-    chunk = cfg["batch"]["chunk_size"]
-
+    policy = CrawlPolicy()  # robots and per-host pacing shared across entire batch
+    fetch_sem = asyncio.Semaphore(max(1, int(cfg["fetch"]["max_concurrent_sites"])))
+    llm_sem = asyncio.Semaphore(max(1, int(cfg["llm"].get("max_concurrent_calls", 6))))
+    domain_age_sem = asyncio.Semaphore(max(1, int(cfg["fetch"].get("max_concurrent_domain_age", 8))))
     async with make_client() as web, httpx.AsyncClient() as llm_client:
-        async def guarded(i: int, url: str) -> SiteResult:
-            async with sem:
-                return await assess_one(web, llm_client, i, url)
-
-        for lo in range(0, len(urls), chunk):
-            part = urls[lo: lo + chunk]
-            results.extend(await asyncio.gather(*[guarded(lo + i, u) for i, u in enumerate(part)]))
+        async def worker(i: int, url: str) -> SiteResult:
+            return await assess_one(web, llm_client, i, url, policy, fetch_sem, llm_sem, domain_age_sem)
+        results = await process_chunks(urls, worker, int(cfg["batch"]["chunk_size"]))
     return AssessResponse(count=len(results), elapsed_seconds=round(time.perf_counter() - start, 3), results=results)
 
 
