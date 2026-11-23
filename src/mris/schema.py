@@ -19,7 +19,8 @@ class Decision(str, Enum):
 class FetchStatus(str, Enum):
     OK = "ok"
     LIMITED_CONTENT = "limited_content"   # little static HTML (e.g. JavaScript-only site)
-    BLOCKED = "blocked"                   # 403 / 429 / bot protection
+    BLOCKED = "blocked"                   # explicit robots Disallow or HTTP access denial
+    ROBOTS_UNAVAILABLE = "robots_unavailable"  # robots policy unknown; fail closed
     TIMEOUT = "timeout"
     DNS_ERROR = "dns_error"
     SSL_ERROR = "ssl_error"
