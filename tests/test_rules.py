@@ -1,5 +1,6 @@
 from mris.rules.engine import run_rules
 from mris.schema import Page, SiteData
+import pytest
 
 HOME = """<html><body><h1>Cool Shop</h1>
 <a href="/terms">Terms of Service</a> <a href="/contact">Contact us</a>
@@ -32,3 +33,68 @@ def test_refund_delivery_and_location_rules():
     assert r.refund_text_found and r.delivery_text_found and r.declared_location == "Calgary, AB, Canada"
     none = run_rules(SiteData(site_id=2, url="u", pages=[Page(page_type="home", url="u", text="Welcome to our shop", html="")]))
     assert not none.refund_text_found and not none.delivery_text_found and none.declared_location is None
+
+
+@pytest.mark.parametrize(
+    ("provider", "html"),
+    [
+        ("helcim", '<div id="helcim-pay"></div>'),
+        ("stripe", '<script src="https://js.stripe.com/v3/"></script>'),
+        ("shopify", '<button class="shop_pay">Shop Pay</button>'),
+        ("adyen", '<div class="adyen-checkout"></div>'),
+        (
+            "woocommerce",
+            '<script src="/wp-content/plugins/woocommerce/cart.js"></script>',
+        ),
+        ("stripe", '<iframe src="https://js.stripe.com/v3/"></iframe>'),
+        ("helcim", '<form action="https://pay.helcim.app/checkout"></form>'),
+    ],
+)
+def test_gateway_signatures_in_html_elements(provider, html):
+    url = "https://merchant.example"
+    site = SiteData(
+        site_id=1,
+        url=url,
+        pages=[Page(page_type="home", url=url, html=html)],
+    )
+
+    assert provider in run_rules(site).gateways_found
+
+
+@pytest.mark.parametrize(
+    ("provider", "html"),
+    [
+        ("stripe", "<p>Stripe scripts are hosted at js.stripe.com.</p>"),
+        (
+            "shopify",
+            '<script src="https://cdn.shopify.com/assets/storefront.js"></script>',
+        ),
+    ],
+)
+def test_unrelated_gateway_mentions_are_ignored(provider, html):
+    url = "https://merchant.example"
+    site = SiteData(
+        site_id=1,
+        url=url,
+        pages=[Page(page_type="home", url=url, html=html)],
+    )
+
+    assert provider not in run_rules(site).gateways_found
+
+
+
+def test_checkout_mention_in_article_is_ignored():
+    url = "https://merchant.example/article"
+    site = SiteData(
+        site_id=1,
+        url=url,
+        pages=[
+            Page(
+                page_type="home",
+                url=url,
+                html="<article><p>This guide explains how checkout works.</p></article>",
+            )
+        ],
+    )
+
+    assert run_rules(site).checkout_detected is False
