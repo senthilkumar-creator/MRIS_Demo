@@ -2,12 +2,12 @@
 # Owner: 
 # Extend this list as we test additional sites.
 gateways:
-  helcim:      ["helcim.com", "helcim-pay", "helcim.app"]
-  stripe:      ["js.stripe.com", "stripe.com/v3", "data-stripe", "stripe-checkout"]
-  shopify:     ["cdn.shopify.com", "shopify-payments", "myshopify.com", "shop_pay"]
-  adyen:       ["adyen.com", "checkoutshopper", "adyen-checkout"]
+  helcim: ["helcim.com", "helcim-pay", "helcim.app"]
+  stripe: ["js.stripe.com", "stripe.com/v3", "data-stripe", "stripe-checkout"]
+  shopify: ["shopify-payments", "shop_pay"]
+  adyen: ["adyen.com", "checkoutshopper", "adyen-checkout"]
   woocommerce: ["woocommerce", "wc-ajax", "wp-content/plugins/woocommerce"]
-  paypal:      ["paypal.com/sdk", "paypalobjects.com", "paypal-button"]
+  paypal: ["paypal.com/sdk", "paypalobjects.com", "paypal-button"]
 checkout_signals:
   cart_words:     ["add to cart", "add to bag", "shopping cart", "view cart", "your cart"]
   checkout_words: ["checkout", "proceed to payment", "place order", "pay now", "buy now"]
