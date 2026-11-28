@@ -37,6 +37,44 @@ def test_assess_endpoint_end_to_end():
     assert r.status_code == 200
     data = r.json()
     assert data["count"] == 3                       # duplicate removed
+    # Validate the batch JSON response.
+    assert set(data) == {"count", "elapsed_seconds", "results"}
+    assert data["count"] == len(data["results"])
+    assert isinstance(data["elapsed_seconds"], (int, float))
+    assert data["elapsed_seconds"] >= 0
+
+    # Validate the JSON structure for every assessed website.
+    for result in data["results"]:
+        assert set(result) == {
+            "url",
+            "routing_decision",
+            "requires_human_review",
+            "review_reasons",
+            "has_working_checkout",
+            "detected_gateways",
+            "industry_classification",
+            "product_industry_match",
+            "risk_flags",
+            "risk_confidence",
+            "business_info",
+            "llm_validation_notes",
+            "fetch_status",
+            "error",
+        }
+
+        assert result["requires_human_review"] == (
+            result["routing_decision"] == "HUMAN_REVIEW"
+        )
+
+        assert set(result["risk_confidence"]) == {
+            "ambiguous_refund_policy",
+            "delayed_delivery",
+            "restricted_goods",
+        }
+
+        for score in result["risk_confidence"].values():
+            assert score is None or 0.0 <= score <= 1.0
+
     by_url = {x["url"]: x for x in data["results"]}
     assert by_url[base + "/good"]["routing_decision"] == "NO_HUMAN_REVIEW"
     assert by_url[base + "/bare"]["routing_decision"] == "HUMAN_REVIEW"
@@ -44,6 +82,23 @@ def test_assess_endpoint_end_to_end():
     assert flags["missing_terms_of_service"] and flags["ambiguous_refund_policy"] and flags["missing_contact_info"]
     assert by_url[base + "/good"]["industry_classification"]["mcc"] == "5399"
     assert by_url["not a url"]["fetch_status"] == "invalid_url"
+    # Successful assessments should expose LLM confidence.
+    good = by_url[base + "/good"]
+
+    assert good["risk_confidence"]["ambiguous_refund_policy"] is not None
+    assert good["risk_confidence"]["delayed_delivery"] is not None
+    assert good["risk_confidence"]["restricted_goods"] is not None
+
+    # Invalid URLs should not contain LLM confidence scores.
+    invalid = by_url["not a url"]
+
+    assert invalid["requires_human_review"] is True
+    assert invalid["routing_decision"] == "HUMAN_REVIEW"
+
+    assert all(
+        score is None
+        for score in invalid["risk_confidence"].values()
+    )
 
     csv = client.post("/assess?format=csv", json={"urls": [base + "/good"]})
     assert csv.headers["content-type"].startswith("text/csv") and "NO_HUMAN_REVIEW" in csv.text and "flag_missing_terms_of_service" in csv.text

@@ -13,7 +13,7 @@ from typing import List
 
 from ..config import get_config
 from ..schema import (BusinessInfo, Decision, FetchStatus, IndustryClassification, LLMResult, ProductIndustryMatch,
-                      RiskFlags, RuleResult, SiteData, SiteResult)
+                      RiskConfidence, RiskFlags, RuleResult, SiteData, SiteResult)
 
 FIELD_NAMES = {"industry": "industry classification", "product_match": "product / industry match",
                "refund": "refund policy", "delivery": "delivery timeline", "restricted": "restricted goods"}
@@ -29,6 +29,7 @@ def decide(site: SiteData, rules: RuleResult, llm: LLMResult) -> SiteResult:
     reasons: List[str] = []
     causes: List[str] = []           # short phrases for llm_validation_notes
     flags = RiskFlags()
+    risk_confidence = RiskConfidence()
     industry, match = IndustryClassification(), ProductIndustryMatch()
     low_conf: List[str] = []
     inconclusive: List[str] = []
@@ -51,6 +52,22 @@ def decide(site: SiteData, rules: RuleResult, llm: LLMResult) -> SiteResult:
             reasons.append("No refund or return policy found on the site"); causes.append("missing refund policy")
 
         if llm.valid:
+            # Preserve confidence scores for completed LLM risk assessments.
+            risk_confidence = RiskConfidence(
+                ambiguous_refund_policy=(
+                    llm.refund_ambiguous.confidence
+                    if "refund" in llm.asked else None
+                ),
+                delayed_delivery=(
+                    llm.delivery_risk.confidence
+                    if "delivery" in llm.asked else None
+                ),
+                restricted_goods=(
+                    llm.restricted_goods.confidence
+                    if "restricted" in llm.asked else None
+                ),
+            )
+
             # ---------- industry + product match ----------
             industry = IndustryClassification(mcc=llm.mcc, naics=llm.naics, description=llm.industry,
                                               confidence_score=llm.industry_confidence)
@@ -150,6 +167,7 @@ def decide(site: SiteData, rules: RuleResult, llm: LLMResult) -> SiteResult:
         industry_classification=industry,
         product_industry_match=match,
         risk_flags=flags,
+        risk_confidence=risk_confidence,
         business_info=BusinessInfo(domain_age_days=rules.domain_age_days, location=rules.declared_location),
         llm_validation_notes=notes,
         fetch_status=site.status, error=site.error,

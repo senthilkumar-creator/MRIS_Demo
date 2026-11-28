@@ -97,12 +97,12 @@ class IndustryClassification(BaseModel):
     mcc: Optional[str] = None
     naics: Optional[str] = None
     description: str = ""
-    confidence_score: float = 0.0
+    confidence_score: float = Field(default=0.0, ge=0.0, le=1.0)
 
 
 class ProductIndustryMatch(BaseModel):
     is_match: Optional[bool] = None
-    confidence_score: float = 0.0
+    confidence_score: float = Field(default=0.0, ge=0.0, le=1.0)
     details: str = ""
 
 
@@ -112,6 +112,18 @@ class RiskFlags(BaseModel):
     delayed_delivery: bool = False
     restricted_goods: bool = False
     missing_contact_info: bool = False
+
+
+class RiskConfidence(BaseModel):
+    ambiguous_refund_policy: Optional[float] = Field(
+        default=None, ge=0.0, le=1.0
+    )
+    delayed_delivery: Optional[float] = Field(
+        default=None, ge=0.0, le=1.0
+    )
+    restricted_goods: Optional[float] = Field(
+        default=None, ge=0.0, le=1.0
+    )
 
 
 class BusinessInfo(BaseModel):
@@ -129,6 +141,7 @@ class SiteResult(BaseModel):
     industry_classification: IndustryClassification = IndustryClassification()
     product_industry_match: ProductIndustryMatch = ProductIndustryMatch()
     risk_flags: RiskFlags = RiskFlags()
+    risk_confidence: RiskConfidence = Field(default_factory=RiskConfidence)
     business_info: BusinessInfo = BusinessInfo()
     llm_validation_notes: str = ""
     # extra fields (not in the proposal example) so failures are visible
