@@ -99,3 +99,126 @@ def test_output_matches_proposal_example_keys():
     assert set(d["industry_classification"]) == {"mcc", "naics", "description", "confidence_score"}
     assert set(d["product_industry_match"]) == {"is_match", "confidence_score", "details"}
     assert set(d["business_info"]) == {"domain_age_days", "location"}
+
+
+def test_confidence_below_threshold():
+    r = decide(site(), good_rules(),
+               good_llm(industry_confidence=0.69))
+    assert r.routing_decision == Decision.HUMAN_REVIEW
+
+
+def test_confidence_equal_to_threshold():
+    r = decide(site(), good_rules(),
+               good_llm(industry_confidence=0.70))
+    assert r.routing_decision == Decision.NO_HUMAN_REVIEW
+
+
+def test_confidence_above_threshold():
+    r = decide(site(), good_rules(),
+               good_llm(industry_confidence=0.71))
+    assert r.routing_decision == Decision.NO_HUMAN_REVIEW
+
+
+def test_missing_contact_triggers_review():
+    r = decide(site(), good_rules(has_contact=False), good_llm())
+    assert r.requires_human_review
+    assert r.risk_flags.missing_contact_info
+
+
+def test_unknown_product_match_triggers_review():
+    llm = good_llm(product_matches_industry=None)
+    r = decide(site(), good_rules(), llm)
+    assert r.requires_human_review
+
+
+def test_inconclusive_refund_triggers_review():
+    llm = good_llm(
+        refund_ambiguous=FieldJudgement(value=None, confidence=0.9)
+    )
+    r = decide(site(), good_rules(), llm)
+    assert r.requires_human_review
+
+
+def test_inconclusive_delivery_triggers_review():
+    llm = good_llm(
+        delivery_risk=FieldJudgement(value=None, confidence=0.9)
+    )
+    r = decide(site(), good_rules(), llm)
+    assert r.requires_human_review
+
+
+def test_inconclusive_restricted_goods_triggers_review():
+    llm = good_llm(
+        restricted_goods=FieldJudgement(value=None, confidence=0.9)
+    )
+    r = decide(site(), good_rules(), llm)
+    assert r.requires_human_review
+
+
+def test_delayed_delivery_triggers_review():
+    llm = good_llm(
+        delivery_risk=FieldJudgement(value=True, confidence=0.9)
+    )
+    r = decide(site(), good_rules(), llm)
+    assert r.requires_human_review
+    assert r.risk_flags.delayed_delivery
+
+
+def test_restricted_goods_triggers_review():
+    llm = good_llm(
+        restricted_goods=FieldJudgement(value=True, confidence=0.9)
+    )
+    r = decide(site(), good_rules(), llm)
+    assert r.requires_human_review
+    assert r.risk_flags.restricted_goods
+
+
+def test_multiple_risk_flags():
+    rules = good_rules(has_terms=False, has_contact=False)
+    llm = good_llm(
+        refund_ambiguous=FieldJudgement(value=True, confidence=0.9)
+    )
+    r = decide(site(), rules, llm)
+    assert r.requires_human_review
+    assert r.risk_flags.missing_terms_of_service
+    assert r.risk_flags.missing_contact_info
+    assert r.risk_flags.ambiguous_refund_policy
+    assert len(r.review_reasons) >= 3
+
+
+def test_restricted_keywords_with_invalid_llm():
+    rules = good_rules(restricted_keyword_hits=["firearms"])
+    llm = LLMResult(valid=False, error="Invalid response")
+    r = decide(site(), rules, llm)
+    assert r.requires_human_review
+    assert r.risk_flags.restricted_goods
+
+
+def test_clean_site_has_no_review_reasons():
+    r = decide(site(), good_rules(), good_llm())
+    assert r.routing_decision == Decision.NO_HUMAN_REVIEW
+    assert r.review_reasons == []
+
+
+def test_young_domain_review_disabled(monkeypatch):
+    monkeypatch.setattr(
+        "mris.decision.engine.get_config",
+        lambda: {
+            "decision": {
+                "confidence_threshold": 0.7,
+                "review_on_young_domain": False
+            }
+        }
+    )
+
+    rules = good_rules(
+        domain_age_days=12,
+        young_domain=True
+    )
+
+    r = decide(site(), rules, good_llm())
+
+    assert r.routing_decision == Decision.NO_HUMAN_REVIEW
+    assert not r.requires_human_review
+    assert r.business_info.domain_age_days == 12
+    assert any("Young domain" in x for x in r.review_reasons)
