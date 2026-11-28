@@ -31,6 +31,7 @@ def decide(site: SiteData, rules: RuleResult, llm: LLMResult) -> SiteResult:
     flags = RiskFlags()
     industry, match = IndustryClassification(), ProductIndustryMatch()
     low_conf: List[str] = []
+    inconclusive: List[str] = []
 
     fetch_problem = site.status != FetchStatus.OK
     if fetch_problem:
@@ -67,6 +68,10 @@ def decide(site: SiteData, rules: RuleResult, llm: LLMResult) -> SiteResult:
                                f" (Confidence: {_pct(llm.product_match_confidence)})")
                 causes.append("product / industry mismatch")
 
+            elif llm.product_matches_industry is None:
+                reasons.append("Could not determine product / industry match")
+                causes.append("inconclusive product / industry match")
+
             # ---------- LLM judgements ----------
             if "refund" in llm.asked:
                 if llm.refund_ambiguous.value is True:
@@ -75,6 +80,8 @@ def decide(site: SiteData, rules: RuleResult, llm: LLMResult) -> SiteResult:
                     causes.append("ambiguous refund policy")
                 if llm.refund_ambiguous.confidence < thr:
                     low_conf.append("refund")
+                if llm.refund_ambiguous.value is None:
+                    inconclusive.append("refund")
             if "delivery" in llm.asked:
                 if llm.delivery_risk.value is True:
                     flags.delayed_delivery = True
@@ -82,6 +89,8 @@ def decide(site: SiteData, rules: RuleResult, llm: LLMResult) -> SiteResult:
                     causes.append("delivery timeline risk")
                 if llm.delivery_risk.confidence < thr:
                     low_conf.append("delivery")
+                if llm.delivery_risk.value is None:
+                    inconclusive.append("delivery")
             elif llm.physical_goods and not rules.delivery_text_found:
                 flags.delayed_delivery = True
                 reasons.append("No delivery information found for a site selling physical goods")
@@ -96,6 +105,8 @@ def decide(site: SiteData, rules: RuleResult, llm: LLMResult) -> SiteResult:
                 causes.append("high-risk industry category")
             if llm.restricted_goods.confidence < thr:
                 low_conf.append("restricted")
+            if llm.restricted_goods.value is None:
+                inconclusive.append("restricted")
         else:
             reasons.append(f"LLM answer unusable: {llm.error}")
             causes.append("invalid LLM output")
@@ -106,6 +117,9 @@ def decide(site: SiteData, rules: RuleResult, llm: LLMResult) -> SiteResult:
         if low_conf:
             reasons.append("Low LLM confidence: " + ", ".join(FIELD_NAMES[f] for f in low_conf))
             causes.append("low confidence in " + ", ".join(FIELD_NAMES[f] for f in low_conf))
+        if inconclusive:
+            reasons.append("Inconclusive LLM judgment: " + ", ".join(FIELD_NAMES[f] for f in inconclusive))
+            causes.append("inconclusive judgment in " + ", ".join(FIELD_NAMES[f] for f in inconclusive))
 
     young = bool(rules.young_domain) and not fetch_problem
     if young:
@@ -114,8 +128,11 @@ def decide(site: SiteData, rules: RuleResult, llm: LLMResult) -> SiteResult:
             causes.append("young domain age")
     young_trigger = young and cfg.get("review_on_young_domain", True)
 
-    review = (fetch_problem or not llm.valid or any(flags.model_dump().values()) or bool(low_conf)
-              or llm.product_matches_industry is False or young_trigger)
+    review = (fetch_problem or not llm.valid
+            or any(flags.model_dump().values())
+            or bool(low_conf) or bool(inconclusive)
+            or llm.product_matches_industry is not True
+            or young_trigger)
     if review:
         notes = "Pushed to human review due to " + "; ".join(causes) + "."
     else:
